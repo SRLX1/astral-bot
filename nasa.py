@@ -4,6 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # print(NASA_API_KEY)
+_cache = {"date":None, "data":None}
 
 #uses regex to strip the html tags
 def strip_html(html_text):
@@ -61,6 +62,18 @@ def APOD_API_request():
         "alt": entry.get("alt", ""),
         "media_type": entry["media_type"],
     }
+
+    # checks if the apod has been cached for today before making an api request
+    # if it has been cached return the cache if not make and return the api request
+    def get_aopd():
+        today = nasa_date()
+        if _cache["date"] == today and _cache["data"]:
+            return _cache["data"]
+        data = APOD_API_request()
+        if data:
+            _cache["date"] = today
+            _cache["data"] = data
+        return data or _cache["data"]
 
 # test because it will only run if the file is run directly
 if __name__ == "__main__":
