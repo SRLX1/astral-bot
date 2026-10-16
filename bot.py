@@ -16,6 +16,8 @@ def build_embed_for_apod(apod):
     )
     if apod["media_type"] ==  "image" and apod["image_url"]:
         embed.set_image(url = apod["image_url"])
+    if apod["media_type"] == "video" and apod["video"]:
+        embed.add_field(name="Video", value=apod["video"], inline=False)
     if apod["credit"]:
         embed.add_field(name="Credit", value=apod["credit"][:1024], inline=False)
     embed.set_footer(text=f"NASA Astrophotography Picture of the Day • {apod['date']}")
@@ -36,6 +38,7 @@ async def on_ready():
 async def send_apod(destination,apod):
     try:
         await destination.send(
+            content = apod["video"] if apod["media_type"] == "video" else None,
             embed = build_embed_for_apod(apod)
         )
         return True
