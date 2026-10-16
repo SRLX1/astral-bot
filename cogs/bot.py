@@ -1,7 +1,7 @@
 import discord, asyncio
 from discord.ext import commands
 from config import DISCORD_TOKEN
-from nasa import get_aopd
+from services.nasa import get_aopd
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
