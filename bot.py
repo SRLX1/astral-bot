@@ -7,22 +7,24 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 channel_id = 1559180502035075144
 
-# creates an embed for the APOD data
-def build_embed_for_apod(apod):
-    embed = discord.Embed(
-        title = apod["title"],
-#        url = apod["hdurl"],
-        description = apod["explanation"],
-        colour = 0x0B3D91,    #Official NASA blue
-    )
-    if apod["media_type"] ==  "image" and apod["image_url"]:
-        embed.set_image(url = apod["image_url"])
-    if apod["media_type"] == "video" and apod["video"]:
-        embed.add_field(name="Video", value=apod["video"], inline=False)
-    if apod["credit"]:
-        embed.add_field(name="Credit", value=apod["credit"][:1024], inline=False)
-    embed.set_footer(text=f"NASA Astrophotography Picture of the Day • {apod['date']}")
-    return embed
+# checks if a url points directly to a video file (can play inside a media gallery)
+def is_direct_video(url):
+    return bool(url) and url.lower().split("?")[0].endswith((".mp4", ".webm", ".mov"))
+
+# creates a container for the APOD data
+def build_container_for_apod(apod):
+    container = discord.ui.Container(accent_color=0x0B3D91) # NASA Blue
+    container.add_item(discord.ui.TextDisplay(f"## {apod['title']}"))
+    if apod["media_type"] == "image" and apod["image_url"]:
+        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["image_url"])))
+    elif apod["media_type"] == "video" and is_direct_video(apod["video"]):
+        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["video"])))
+    container.add_item(discord.ui.TextDisplay(apod["explanation"]))
+    if apod["credit"]: container.add_item(discord.ui.TextDisplay(f"**Credit**\n{apod['credit']}"))
+    container.add_item(discord.ui.TextDisplay(f"-# NASA Astrophotography Picture of the Day • {apod['date']}"))
+    view = discord.ui.LayoutView(timeout=None)
+    view.add_item(container)
+    return view
 
 async def get_destination(bot,kind,target_id):
     if kind == "dm":
@@ -38,10 +40,10 @@ async def on_ready():
 
 async def send_apod(destination,apod):
     try:
-        await destination.send(
-            content = apod["video"] if apod["media_type"] == "video" else None,
-            embed = build_embed_for_apod(apod)
-        )
+        await destination.send(view = build_container_for_apod(apod))
+        # YouTube/Vimeo etc. can't go in the gallery, send the link separately so Discord shows its player
+        if apod["media_type"] == "video" and apod["video"] and not is_direct_video(apod["video"]):
+            await destination.send(apod["video"])
         return True
     except discord.Forbidden:
         print(f"Can't send to {destination}: DMs closed or missing permissions")
@@ -58,8 +60,7 @@ async def respod_apod(interaction: discord.Interaction):
     if apod is None:
         await interaction.followup.send("Nasa is not available right now, please try again later")
         return
-    await interaction.followup.send(embed = build_embed_for_apod(apod))
-    # Discord can't play videos inside bot embeds, but it will auto-embed a
-    # playable video when the raw URL is posted as plain message content
-    if apod["media_type"] == "video" and apod["video"]:
+    await interaction.followup.send(view = build_container_for_apod(apod))
+    # YouTube/Vimeo etc. can't go in the gallery, send the link separately so Discord shows its player
+    if apod["media_type"] == "video" and apod["video"] and not is_direct_video(apod["video"]):
         await interaction.followup.send(apod["video"])
