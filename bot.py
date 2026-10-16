@@ -1,6 +1,7 @@
-import discord
+import discord, asyncio
 from discord.ext import commands
 from config import DISCORD_TOKEN
+from nasa import get_aopd
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -52,4 +53,13 @@ async def send_apod(destination,apod):
 
 @bot.tree.command(name="apod", description="Veiw the Astrophotgraphy of the day")
 async def respod_apod(interaction: discord.Interaction):
-    pass
+    await interaction.response.defer()
+    apod = await asyncio.to_thread(get_aopd)
+    if apod is None:
+        await interaction.followup.send("Nasa is not available right now, please try again later")
+        return
+    await interaction.followup.send(embed = build_embed_for_apod(apod))
+    # Discord can't play videos inside bot embeds, but it will auto-embed a
+    # playable video when the raw URL is posted as plain message content
+    if apod["media_type"] == "video" and apod["video"]:
+        await interaction.followup.send(apod["video"])

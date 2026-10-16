@@ -68,7 +68,7 @@ def APOD_API_request():
     return {
         "date": entry["date"],
         "title": entry["title"],
-        "explanation": strip_html(entry["explanation"]),
+        "explanation": strip_html_convert_links(entry["explanation"]),
         "credit": strip_html_convert_links(entry["credit"]),
         "image_url": entry.get("hdurl"),
         "page_url": entry["permalink"],
