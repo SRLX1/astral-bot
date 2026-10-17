@@ -1,3 +1,5 @@
+from database.database import add_or_update_subscription
+import zoneinfo
 from discord import app_commands
 import discord, asyncio, re
 from discord.ext import commands
@@ -5,6 +7,8 @@ from datetime import datetime, date as dt_date
 from config import DISCORD_TOKEN
 from services.nasa import get_aopd, nasa_date
 from database.database import innit_db
+from zoneinfo import available_timezones
+from cogs.scheduler_utils import compute_next_send
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -13,6 +17,11 @@ channel_id = 1559180502035075144
 # checks if a url points directly to a video file (can play inside a media gallery)
 def is_direct_video(url):
     return bool(url) and url.lower().split("?")[0].endswith((".mp4", ".webm", ".mov"))
+
+def get_target(interaction):
+    if interaction.guild is None:
+        return "dm", interaction.user.id
+    return "channel", interaction.channel_id
 
 # creates a container for the APOD data
 def build_container_for_apod(apod):
@@ -84,3 +93,34 @@ async def respod_apod(interaction: discord.Interaction, date: str | None = None)
     await interaction.followup.send(view=build_container_for_apod(apod))
     if apod["media_type"] == "video" and apod["video"] and not is_direct_video(apod["video"]):
         await interaction.followup.send(apod["video"])
+
+@bot.tree.command(name="subscribe", description="get the AOPD every day at a set time")
+@app_commands.describe(time="Yuor local time as HH:MM", timezone="e.g. America/New_York")
+async def subscribe(interaction: discord.Interaction, time: str, timezone: str):
+    kind, target_id = get_target(interaction)
+    try:
+        hours,mins = map(int,time.split(":"))
+        if hours not in range(0,24) or mins not in range(0,60):
+            raise ValueError()
+    except ValueError:
+        await interaction.response.send_message("Invalid time format, use HH:MM", ephemeral=True)
+        return
+    try:
+        zoneinfo.ZoneInfo(timezone)
+    except (zoneinfo.ZoneInfoNotFoundError,ValueError):
+        await interaction.response.send_message("Invalid timezone, use tz database format", ephemeral=True)
+        return
+    time = f"{hours:02d}:{mins:02d}" 
+    next_send_at = compute_next_send(time,timezone)
+    add_or_update_subscription(kind,target_id,time,timezone,next_send_at)
+    await interaction.response.send_message(
+        f"Subscribed! You'll get the APOD every day at {time} ({timezone}). "
+        f"First one: <t:{next_send_at}:F>",
+        ephemeral=True,
+    )
+        
+   
+@subscribe.autocomplete("timezone")
+async def timezone_autocomplete(interaction: discord.Interaction, current: str):
+    matches = [tz for tz in available_timezones() if current.lower() in tz.lower()]
+    return([app_commands.Choice(name=tz,value=tz) for tz in matches[:25]])
