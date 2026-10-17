@@ -1,7 +1,9 @@
-import discord, asyncio
+from discord import app_commands
+import discord, asyncio, re
 from discord.ext import commands
+from datetime import datetime, date as dt_date
 from config import DISCORD_TOKEN
-from services.nasa import get_aopd
+from services.nasa import get_aopd, nasa_date
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -53,14 +55,26 @@ async def send_apod(destination,apod):
         print(f"Failed to send message: {e}")
     return False
 
-@bot.tree.command(name="apod", description="Veiw the Astrophotgraphy of the day")
-async def respod_apod(interaction: discord.Interaction):
+@bot.tree.command(name="apod", description="View the Astrophotography Picture of the Day")
+@app_commands.describe(date="Optional date as YYYY-MM-DD, YYYY/MM/DD or YYYY MM DD (e.g. 2024-01-01)")
+async def respod_apod(interaction: discord.Interaction, date: str | None = None):
+    if date:
+        # accept dashes, slashes, dots or spaces as separators by normalising them all to dashes
+        normalised = re.sub(r"[-/.\s]+", "-", date.strip())
+        try:
+            parsed = datetime.strptime(normalised, "%Y-%m-%d").date()
+        except ValueError:
+            await interaction.response.send_message("Invalid date, use YYYY-MM-DD", ephemeral=True)
+            return
+        date = parsed.isoformat() # canonical YYYY-MM-DD (zero padded) for comparisons and the API
+        if parsed < dt_date(1995, 6, 16) or date > nasa_date():
+            await interaction.response.send_message("Date must be between 1995-06-16 and today", ephemeral=True)
+            return
     await interaction.response.defer()
-    apod = await asyncio.to_thread(get_aopd)
+    apod = await asyncio.to_thread(get_aopd, date)
     if apod is None:
-        await interaction.followup.send("Nasa is not available right now, please try again later")
+        await interaction.followup.send("NASA is not available right now, please try again later")
         return
-    await interaction.followup.send(view = build_container_for_apod(apod))
-    # YouTube/Vimeo etc. can't go in the gallery, send the link separately so Discord shows its player
+    await interaction.followup.send(view=build_container_for_apod(apod))
     if apod["media_type"] == "video" and apod["video"] and not is_direct_video(apod["video"]):
         await interaction.followup.send(apod["video"])

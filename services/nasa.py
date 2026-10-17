@@ -54,15 +54,19 @@ def nasa_date():
 # GET https://science.nasa.gov/wp-json/wp/v2/apod-basic
 def APOD_API_request(date=None):
     url = "https://science.nasa.gov/wp-json/wp/v2/apod-basic"
-    params = {
-        "api_key": NASA_API_KEY,
-        "date": date or nasa_date(),
-    }
+    params = {"api_key": NASA_API_KEY}
+    if date:
+        # endpoint ignores "date"; it filters with date_from/date_to in YYMMDD format (e.g. 240101)
+        yymmdd = datetime.strptime(date, "%Y-%m-%d").strftime("%y%m%d")
+        params["date_from"] = params["date_to"] = yymmdd
 
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json() # converts the respose to json format
+        if isinstance(data, list) and not data:
+            print(f"No APOD found for {date}")
+            return None
         entry = data[0] if isinstance(data, list) else data # the endpoint returns multiple entries for previous days this takes the firs/newest one
     except requests.Timeout:
         print("NASA API request timed out")
@@ -86,8 +90,10 @@ def APOD_API_request(date=None):
 
     # checks if the apod has been cached for today before making an api request
     # if it has been cached return the cache if not make and return the api request
-def get_aopd():
+def get_aopd(date=None):
     today = nasa_date()
+    if date and date != today:
+        return APOD_API_request(date)
     if _cache["date"] == today and _cache["data"]:
         return _cache["data"]
     data = APOD_API_request()
