@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime, date as dt_date
 from config import DISCORD_TOKEN
 from services.nasa import get_aopd, nasa_date
+from database.database import innit_db
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -39,6 +40,11 @@ async def on_ready():
     print(f"Synced {len(synced)} commands")
     destination = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
     await destination.send("Hello World!")
+
+@bot.event
+async def setup_hook():
+    innit_db()
+    await bot.load_extension("cogs.scheduler")
 
 async def send_apod(destination,apod):
     try:
