@@ -17,11 +17,16 @@ def strip_html(html_text):
 #uses regex to strip all html tags apart from links
 #links are converted to markdown format which can be read by discord
 def strip_html_convert_links(html_text):
+    def replace_link(match):
+        url = match.group(1).strip().replace(" ", "%20")
+        text = match.group(2).strip()
+        return f"[{text}]({url})"
+
     html_text = re.sub(
-    r'<a\s+[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
-    r"[\2](\1)",
-    html_text,
-    flags=re.S,
+        r'<a\s+[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+        replace_link,
+        html_text,
+        flags=re.S,
     )
     html_text = re.sub(r"<[^>]+>", "", html_text)
     return html.unescape(html_text).strip()
@@ -47,11 +52,11 @@ def nasa_date():
 
 # Astrophotography of the day API endpoint
 # GET https://science.nasa.gov/wp-json/wp/v2/apod-basic
-def APOD_API_request():
+def APOD_API_request(date=None):
     url = "https://science.nasa.gov/wp-json/wp/v2/apod-basic"
     params = {
         "api_key": NASA_API_KEY,
-        "date": nasa_date(),
+        "date": date or nasa_date(),
     }
 
     try:
