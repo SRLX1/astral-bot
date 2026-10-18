@@ -81,6 +81,18 @@ def truncate_explanation(text, page_url, max_length=3800):
     return f"{trimmed}{suffix}"
 
 
+# Helper to extract image or gif URL from basic_html when hdurl is missing or placeholder
+def extract_image_url(basic_html):
+    if not basic_html:
+        return None
+    match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', basic_html, re.I)
+    if not match:
+        return None
+    url = html.unescape(match.group(1)).strip()
+    if url.startswith("//"):
+        url = "https:" + url
+    return url
+
 # Astrophotography of the day API endpoint
 # GET https://science.nasa.gov/wp-json/wp/v2/apod-basic
 def APOD_API_request(date=None):
@@ -110,14 +122,22 @@ def APOD_API_request(date=None):
     thumbnail_url = get_youtube_thumbnail(video_url) if video_url else None
     explination = truncate_explanation(strip_html_convert_links(entry.get("explanation")), entry["permalink"])
 
+    raw_hdurl = entry.get("hdurl")
+    is_placeholder = bool(raw_hdurl and "news-thumbnail" in raw_hdurl)
+    hdurl = None if is_placeholder else raw_hdurl
+
+    fallback_image = extract_image_url(entry.get("basic_html", "")) or entry.get("image")
+    image_url = hdurl or fallback_image
+
     return {
         "date": entry["date"],
         "title": entry["title"],
         "explanation": explination,
         "credit": strip_html_convert_links(entry.get("credit")) or "Public Domain",
-        "image_url": entry.get("hdurl"),
+        "image_url": image_url,
+        "url": fallback_image or entry.get("url", ""),
+        "hdurl": hdurl or fallback_image or "",
         "page_url": entry["permalink"],
-        "hdurl": entry.get("hdurl", ""),
         "alt": entry.get("alt", ""),
         "media_type": entry["media_type"],
         "video": video_url,

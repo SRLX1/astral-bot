@@ -24,8 +24,9 @@ def get_target(interaction):
 def build_container_for_apod(apod):
     container = discord.ui.Container(accent_color=0x0B3D91) # NASA Blue
     container.add_item(discord.ui.TextDisplay(f"## {apod['title']}"))
-    if apod["media_type"] == "image" and apod["image_url"]:
-        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["image_url"])))
+    image_url = apod.get("image_url") or apod.get("hdurl") or apod.get("url")
+    if apod["media_type"] == "image" and image_url:
+        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(image_url)))
     elif apod["media_type"] == "video" and is_direct_video(apod["video"]):
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["video"])))
     elif apod["media_type"] == "video" and apod.get("thumbnail_url"):
