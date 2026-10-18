@@ -55,17 +55,8 @@ async def setup_hook():
     synced = await bot.tree.sync()
     print(f"Synced {len(synced)} commands")
 
-async def send_apod(destination,apod):
-    try:
-        await destination.send(view = build_container_for_apod(apod))
-        return True
-    except discord.Forbidden:
-        print(f"Can't send to {destination}: DMs closed or missing permissions")
-    except discord.NotFound:
-        print(f"Destination {destination} no longer exists")
-    except discord.HTTPException as e:
-        print(f"Failed to send message: {e}")
-    return False
+async def send_apod(destination, apod):
+    return await destination.send(view=build_container_for_apod(apod))
 
 @bot.tree.command(name="apod", description="View the Astrophotography Picture of the Day")
 @app_commands.describe(date="Optional date as YYYY-MM-DD, YYYY/MM/DD or YYYY MM DD (e.g. 2024-01-01)")

@@ -1,4 +1,5 @@
-import time,asyncio
+from database.database import remove_subscription
+import time,asyncio,discord
 from discord.ext import commands,tasks
 from database.database import get_due_subscriptions,set_next_send_times
 from services.nasa import get_aopd
@@ -28,12 +29,14 @@ class Scheduler(commands.Cog):
         for row in due:
             try:
                 destination = await get_destination(self.bot, row["kind"], row["target_id"])
-                ok = await send_apod(destination,apod)
-                if ok:
-                    updates.append((compute_next_send(row["send_time"],row["timezone"]),row["kind"],row["target_id"]))
+                await send_apod(destination, apod)
+                updates.append((compute_next_send(row["send_time"], row["timezone"]), row["kind"], row["target_id"]))
+            except (discord.Forbidden, discord.NotFound):
+                print(f"Removing dead subscription for {row['kind']} {row['target_id']} (Forbidden or NotFound)")
+                remove_subscription(row["kind"], row["target_id"])
             except Exception as e:
-                # one bad row (deleted channel, unknown user, bad timezone) shouldn't stop the others
-                print(f"Failed to deliver APOD to {row['kind']} {row['target_id']}: {e}")
+                print(f"Temporary failure delivering APOD to {row['kind']} {row['target_id']}: {e}")
+                updates.append((compute_next_send(row["send_time"], row["timezone"]), row["kind"], row["target_id"]))
         if updates:
             set_next_send_times(updates)
 
