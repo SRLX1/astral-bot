@@ -9,6 +9,7 @@ def get_db_connection():
     return conn
 
 def innit_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = get_db_connection()
     with conn:
         conn.execute("""
