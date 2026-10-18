@@ -1,14 +1,13 @@
-from database.database import add_or_update_subscription
-import zoneinfo
+from database.database import innit_db,add_or_update_subscription,remove_subscription
 from discord import app_commands
-import discord, asyncio, re
 from discord.ext import commands
 from datetime import datetime, date as dt_date
 from config import DISCORD_TOKEN
 from services.nasa import get_aopd, nasa_date
-from database.database import innit_db
 from zoneinfo import available_timezones
 from cogs.scheduler_utils import compute_next_send
+
+import discord, asyncio, re,zoneinfo
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -46,6 +45,8 @@ async def get_destination(bot,kind,target_id):
 async def setup_hook():
     innit_db()
     await bot.load_extension("cogs.scheduler")
+    synced = await bot.tree.sync()
+    print(f"Synced {len(synced)} commands")
 
 async def send_apod(destination,apod):
     try:
@@ -110,9 +111,13 @@ async def subscribe(interaction: discord.Interaction, time: str, timezone: str):
         f"First one: <t:{next_send_at}:F>",
         ephemeral=True,
     )
-        
-   
 @subscribe.autocomplete("timezone")
 async def timezone_autocomplete(interaction: discord.Interaction, current: str):
     matches = [tz for tz in available_timezones() if current.lower() in tz.lower()]
     return([app_commands.Choice(name=tz,value=tz) for tz in matches[:25]])
+
+@bot.tree.command(name="unsubscribe", description="Unsubscribe from the daily APOD")
+async def unsubscribe(interaction: discord.Interaction):
+    kind,target_id = get_target(interaction)
+    remove_subscription(kind,target_id)
+    await interaction.response.send_message("You have been unsubscribed from the daily APOD", ephemeral=True)
