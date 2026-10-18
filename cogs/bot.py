@@ -12,7 +12,6 @@ from cogs.scheduler_utils import compute_next_send
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
-channel_id = 1559180502035075144
 
 # checks if a url points directly to a video file (can play inside a media gallery)
 def is_direct_video(url):
@@ -42,13 +41,6 @@ async def get_destination(bot,kind,target_id):
     if kind == "dm":
         return await bot.fetch_user(target_id)
     return bot.get_channel(target_id) or await bot.fetch_channel(target_id)
-
-@bot.event
-async def on_ready():
-    synced = await bot.tree.sync()
-    print(f"Synced {len(synced)} commands")
-    destination = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
-    await destination.send("Hello World!")
 
 @bot.event
 async def setup_hook():
