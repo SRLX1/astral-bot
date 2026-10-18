@@ -17,6 +17,9 @@ def strip_html(html_text):
 #uses regex to strip all html tags apart from links
 #links are converted to markdown format which can be read by discord
 def strip_html_convert_links(html_text):
+    if not html_text:
+        return(None)
+
     def replace_link(match):
         url = match.group(1).strip().replace(" ", "%20")
         text = match.group(2).strip()
@@ -52,8 +55,7 @@ def nasa_date():
 
 # Helper to extract YouTube video ID and build thumbnail URL (checks for highest resolution available)
 def get_youtube_thumbnail(video_url: str | None) -> str | None:
-    if not video_url:
-        return None
+    if not video_url: return ""
     match = re.search(r'(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', video_url)
     if not match:
         return None
@@ -103,8 +105,8 @@ def APOD_API_request(date=None):
     return {
         "date": entry["date"],
         "title": entry["title"],
-        "explanation": strip_html_convert_links(entry["explanation"]),
-        "credit": strip_html_convert_links(entry["credit"]),
+        "explanation": strip_html_convert_links(entry.get("explanation")),
+        "credit": strip_html_convert_links(entry.get("credit")) or "Public Domain",
         "image_url": entry.get("hdurl"),
         "page_url": entry["permalink"],
         "hdurl": entry.get("hdurl", ""),
