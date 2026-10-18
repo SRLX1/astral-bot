@@ -47,6 +47,11 @@ async def get_destination(bot,kind,target_id):
         return await bot.fetch_user(target_id)
     return bot.get_channel(target_id) or await bot.fetch_channel(target_id)
 
+async def send_apod(destination, apod):
+    return await destination.send(view=build_container_for_apod(apod))
+
+
+
 @bot.event
 async def setup_hook():
     innit_db()
@@ -54,10 +59,19 @@ async def setup_hook():
     synced = await bot.tree.sync()
     print(f"Synced {len(synced)} commands")
 
-async def send_apod(destination, apod):
-    return await destination.send(view=build_container_for_apod(apod))
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error,app_commands.CommandOnCooldown):
+        await interaction.response.send_message(
+            f"⏳ You are doing that too fast! Please try again in {error.retry_after:.1f}s.",
+            ephemeral=True
+        )
+    else:
+        cmd = interaction.command.name if interaction.command else "unknown"
+        print(f"Command error in {cmd}: {error}")
 
 @bot.tree.command(name="apod", description="View the Astrophotography Picture of the Day")
+@app_commands.checks.cooldown(2, 4.0, key=lambda i: i.user.id)
 @app_commands.describe(date="Optional date as YYYY-MM-DD, YYYY/MM/DD or YYYY MM DD (e.g. 2024-01-01)")
 async def respod_apod(interaction: discord.Interaction, date: str | None = None):
     if date:
@@ -81,6 +95,8 @@ async def respod_apod(interaction: discord.Interaction, date: str | None = None)
 
 @bot.tree.command(name="subscribe", description="get the AOPD every day at a set time")
 @app_commands.describe(time="Yuor local time as HH:MM", timezone="e.g. America/New_York")
+@app_commands.default_permissions(manage_channels=True)
+@app_commands.checks.cooldown(3, 5.0, key=lambda i: i.user.id)
 async def subscribe(interaction: discord.Interaction, time: str, timezone: str):
     kind, target_id = get_target(interaction)
     try:
@@ -109,6 +125,8 @@ async def timezone_autocomplete(interaction: discord.Interaction, current: str):
     return([app_commands.Choice(name=tz,value=tz) for tz in matches[:25]])
 
 @bot.tree.command(name="unsubscribe", description="Unsubscribe from the daily APOD")
+@app_commands.default_permissions(manage_channels=True)
+@app_commands.checks.cooldown(3, 5.0, key=lambda i: i.user.id)
 async def unsubscribe(interaction: discord.Interaction):
     kind,target_id = get_target(interaction)
     remove_subscription(kind,target_id)
