@@ -71,6 +71,15 @@ def get_youtube_thumbnail(video_url: str | None) -> str | None:
             pass
     return f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
+def truncate_explanation(text, page_url, max_length=3800):
+    if not text or len(text) <= max_length:
+        return text or ""
+    trimmed = text[:max_length].rsplit(" ", 1)[0]
+    if trimmed.count("[") > trimmed.count("]"):
+        trimmed = trimmed.rsplit("[", 1)[0].rstrip()
+    suffix = f"...\n\n[Read full explanation on NASA]({page_url})" if page_url else "..."
+    return f"{trimmed}{suffix}"
+
 
 # Astrophotography of the day API endpoint
 # GET https://science.nasa.gov/wp-json/wp/v2/apod-basic
@@ -99,11 +108,12 @@ def APOD_API_request(date=None):
     
     video_url = extract_video_url(entry.get("basic_html", "")) if entry.get("media_type") == "video" else None
     thumbnail_url = get_youtube_thumbnail(video_url) if video_url else None
+    explination = truncate_explanation(strip_html_convert_links(entry.get("explanation")), entry["permalink"])
 
     return {
         "date": entry["date"],
         "title": entry["title"],
-        "explanation": strip_html_convert_links(entry.get("explanation")),
+        "explanation": explination,
         "credit": strip_html_convert_links(entry.get("credit")) or "Public Domain",
         "image_url": entry.get("hdurl"),
         "page_url": entry["permalink"],
