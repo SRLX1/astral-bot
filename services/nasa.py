@@ -50,6 +50,28 @@ def extract_video_url(basic_html):
 def nasa_date():
     return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
 
+# Helper to extract YouTube video ID and build thumbnail URL (checks for highest resolution available)
+def get_youtube_thumbnail(video_url: str | None) -> str | None:
+    if not video_url:
+        return None
+    match = re.search(r'(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', video_url)
+    if not match:
+        return None
+    video_id = match.group(1)
+
+    # Check for higher-resolution thumbnails first:
+    # maxresdefault (1080p / 720p HD), sddefault (640x480 SD), hqdefault (480x360)
+    for quality in ("maxresdefault", "sddefault"):
+        url = f"https://img.youtube.com/vi/{video_id}/{quality}.jpg"
+        try:
+            res = requests.head(url, timeout=2)
+            if res.status_code == 200:
+                return url
+        except requests.RequestException:
+            pass
+    return f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+
+
 # Astrophotography of the day API endpoint
 # GET https://science.nasa.gov/wp-json/wp/v2/apod-basic
 def APOD_API_request(date=None):
@@ -74,6 +96,10 @@ def APOD_API_request(date=None):
     except requests.RequestException as e:
         print(f"NASA API request failed: {e}")
         return None
+    
+    video_url = extract_video_url(entry.get("basic_html", "")) if entry.get("media_type") == "video" else None
+    thumbnail_url = get_youtube_thumbnail(video_url) if video_url else None
+
     return {
         "date": entry["date"],
         "title": entry["title"],
@@ -84,8 +110,8 @@ def APOD_API_request(date=None):
         "hdurl": entry.get("hdurl", ""),
         "alt": entry.get("alt", ""),
         "media_type": entry["media_type"],
-        "video": extract_video_url(entry.get("basic_html", "")) if entry["media_type"] == "video" else None,
-
+        "video": video_url,
+        "thumbnail_url": thumbnail_url
     }
 
     # checks if the apod has been cached for today before making an api request

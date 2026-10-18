@@ -29,6 +29,13 @@ def build_container_for_apod(apod):
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["image_url"])))
     elif apod["media_type"] == "video" and is_direct_video(apod["video"]):
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["video"])))
+    elif apod["media_type"] == "video" and apod.get("thumbnail_url"):
+        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["thumbnail_url"])))
+        container.add_item(discord.ui.ActionRow(discord.ui.Button(
+            label="Watch on YouTube",
+            url=apod["video"],
+            style=discord.ButtonStyle.link,
+        )))
     container.add_item(discord.ui.TextDisplay(apod["explanation"]))
     if apod["credit"]: container.add_item(discord.ui.TextDisplay(f"**Credit**\n{apod['credit']}"))
     container.add_item(discord.ui.TextDisplay(f"-# NASA Astrophotography Picture of the Day • {apod['date']}"))
@@ -51,9 +58,6 @@ async def setup_hook():
 async def send_apod(destination,apod):
     try:
         await destination.send(view = build_container_for_apod(apod))
-        # YouTube/Vimeo etc. can't go in the gallery, send the link separately so Discord shows its player
-        if apod["media_type"] == "video" and apod["video"] and not is_direct_video(apod["video"]):
-            await destination.send(apod["video"])
         return True
     except discord.Forbidden:
         print(f"Can't send to {destination}: DMs closed or missing permissions")
@@ -84,8 +88,6 @@ async def respod_apod(interaction: discord.Interaction, date: str | None = None)
         await interaction.followup.send("NASA is not available right now, please try again later")
         return
     await interaction.followup.send(view=build_container_for_apod(apod))
-    if apod["media_type"] == "video" and apod["video"] and not is_direct_video(apod["video"]):
-        await interaction.followup.send(apod["video"])
 
 @bot.tree.command(name="subscribe", description="get the AOPD every day at a set time")
 @app_commands.describe(time="Yuor local time as HH:MM", timezone="e.g. America/New_York")
