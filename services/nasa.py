@@ -17,9 +17,7 @@ def strip_html(html_text):
 #uses regex to strip all html tags apart from links
 #links are converted to markdown format which can be read by discord
 def strip_html_convert_links(html_text):
-    if not html_text:
-        return(None)
-
+    if not html_text: return ""
     def replace_link(match):
         url = match.group(1).strip().replace(" ", "%20")
         text = match.group(2).strip()
@@ -37,14 +35,15 @@ def strip_html_convert_links(html_text):
 #uses regext to strip all text and retrurn the link to the video file
 #links are converted to be valid protocol or to a valid youtube link
 def extract_video_url(basic_html):
-    match = re.search(r'<(?:source|video|iframe)[^>]+src="([^"]+)"', basic_html, re.I)
+    match = re.search(r'<(?:source|video|iframe)[^>]+src=["\']([^"\']+)["\']', basic_html, re.I)
     if not match:
         return None
-    url = html.unescape(match.group(1))
+    url = html.unescape(match.group(1)).strip()
     if url.startswith("//"):
         url = "https:" + url
-    if "youtube.com/embed/" in url:
-        video_id = url.split("youtube.com/embed/")[1].split("?")[0]
+    yt_match = re.search(r'(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', url, re.I)
+    if yt_match:
+        video_id = yt_match.group(1)
         url = f"https://www.youtube.com/watch?v={video_id}"
     return url
 
@@ -55,10 +54,9 @@ def nasa_date():
 
 # Helper to extract YouTube video ID and build thumbnail URL (checks for highest resolution available)
 def get_youtube_thumbnail(video_url: str | None) -> str | None:
-    if not video_url: return ""
+    if not video_url: return None
     match = re.search(r'(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', video_url)
-    if not match:
-        return None
+    if not match: return None
     video_id = match.group(1)
 
     # Check for higher-resolution thumbnails first:
