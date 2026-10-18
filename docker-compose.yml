@@ -1,0 +1,9 @@
+services:
+  bot:
+    build: .
+    container_name: astral-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./database/data:/app/database/data
