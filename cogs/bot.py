@@ -2,7 +2,6 @@ from database.database import innit_db,add_or_update_subscription,remove_subscri
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, date as dt_date
-from config import DISCORD_TOKEN
 from services.nasa import get_aopd, nasa_date
 from zoneinfo import available_timezones
 from cogs.scheduler_utils import compute_next_send
