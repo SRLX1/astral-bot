@@ -93,8 +93,8 @@ async def respod_apod(interaction: discord.Interaction, date: str | None = None)
         return
     await interaction.followup.send(view=build_container_for_apod(apod))
 
-@bot.tree.command(name="subscribe", description="get the AOPD every day at a set time")
-@app_commands.describe(time="Yuor local time as HH:MM", timezone="e.g. America/New_York")
+@bot.tree.command(name="subscribe", description="get the APOD every day at a set time")
+@app_commands.describe(time="Your local time as HH:MM", timezone="e.g. America/New_York")
 @app_commands.default_permissions(manage_channels=True)
 @app_commands.checks.cooldown(3, 5.0, key=lambda i: i.user.id)
 async def subscribe(interaction: discord.Interaction, time: str, timezone: str):
