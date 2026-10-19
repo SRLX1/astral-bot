@@ -51,8 +51,11 @@ def build_container_for_apod(apod):
                 url=video_url,
                 style=discord.ButtonStyle.link,
             )))
-    container.add_item(discord.ui.TextDisplay(apod["explanation"]))
-    if apod["credit"]: container.add_item(discord.ui.TextDisplay(f"**Credit**\n{apod['credit']}"))
+
+    explanation = apod.get("explanation") or "No explanation provided."
+    container.add_item(discord.ui.TextDisplay(explanation))
+    if apod.get("credit"):
+        container.add_item(discord.ui.TextDisplay(f"**Credit**\n{apod['credit']}"))
     container.add_item(discord.ui.TextDisplay(f"-# NASA Astrophotography Picture of the Day • {apod['date']}"))
     view = discord.ui.LayoutView(timeout=None)
     view.add_item(container)

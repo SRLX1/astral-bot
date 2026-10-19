@@ -71,9 +71,11 @@ def get_youtube_thumbnail(video_url: str | None) -> str | None:
             pass
     return f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
-def truncate_explanation(text, page_url, max_length=3800):
-    if not text or len(text) <= max_length:
-        return text or ""
+def truncate_explanation(text, page_url, max_length=3400):
+    if not text:
+        return "No explanation provided."
+    if len(text) <= max_length:
+        return text
     trimmed = text[:max_length].rsplit(" ", 1)[0]
     if trimmed.count("[") > trimmed.count("]"):
         trimmed = trimmed.rsplit("[", 1)[0].rstrip()
