@@ -60,11 +60,13 @@ def add_or_update_subscription(kind, target_id, send_time, timezone, next_send_a
                 next_send_at = excluded.next_send_at
             """, (kind, target_id, send_time, timezone, next_send_at))
 
-def set_next_send_times(updates):  # accepts list of tuples
+def update_subscription_next_send(kind, target_id, old_next_send_at, new_next_send_at):
     with db_session() as conn:
-        conn.executemany(
-            "UPDATE subscriptions SET next_send_at = ? WHERE kind = ? AND target_id = ?",
-            updates
-        )
+        cursor = conn.execute("""
+            UPDATE subscriptions 
+            SET next_send_at = ? 
+            WHERE kind = ? AND target_id = ? AND next_send_at = ?
+            """, (new_next_send_at, kind, target_id, old_next_send_at))
+        return cursor.rowcount > 0
 
 

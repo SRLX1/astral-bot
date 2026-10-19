@@ -1,7 +1,7 @@
 from database.database import remove_subscription
 import time,asyncio,discord
 from discord.ext import commands,tasks
-from database.database import get_due_subscriptions,set_next_send_times
+from database.database import get_due_subscriptions, update_subscription_next_send
 from services.nasa import get_aopd
 from cogs.bot import get_destination,send_apod
 from cogs.scheduler_utils import compute_next_send
@@ -25,20 +25,24 @@ class Scheduler(commands.Cog):
         apod = await asyncio.to_thread(get_aopd)
         if not apod:
             return
-        updates = []
+
         for row in due:
+            kind = row["kind"]
+            target_id = row["target_id"]
+            old_next_send = row["next_send_at"]
+            new_next_send = compute_next_send(row["send_time"], row["timezone"])
+
             try:
-                destination = await get_destination(self.bot, row["kind"], row["target_id"])
+                destination = await get_destination(self.bot, kind, target_id)
                 await send_apod(destination, apod)
-                updates.append((compute_next_send(row["send_time"], row["timezone"]), row["kind"], row["target_id"]))
+                update_subscription_next_send(kind, target_id, old_next_send, new_next_send)
             except (discord.Forbidden, discord.NotFound):
-                print(f"Removing dead subscription for {row['kind']} {row['target_id']} (Forbidden or NotFound)")
-                remove_subscription(row["kind"], row["target_id"])
+                print(f"Removing dead subscription for {kind} {target_id} (Forbidden or NotFound)")
+                remove_subscription(kind, target_id)
             except Exception as e:
-                print(f"Temporary failure delivering APOD to {row['kind']} {row['target_id']}: {e}")
-                updates.append((compute_next_send(row["send_time"], row["timezone"]), row["kind"], row["target_id"]))
-        if updates:
-            set_next_send_times(updates)
+                print(f"Temporary failure delivering APOD to {kind} {target_id}: {e}")
+                update_subscription_next_send(kind, target_id, old_next_send, new_next_send)
+
 
         
     @deliver_due_apods.before_loop
