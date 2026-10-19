@@ -148,10 +148,13 @@ async def timezone_autocomplete(interaction: discord.Interaction, current: str):
 @app_commands.checks.cooldown(3, 5.0, key=lambda i: i.user.id)
 async def unsubscribe(interaction: discord.Interaction):
     kind,target_id = get_target(interaction)
-    remove_subscription(kind,target_id)
-    await interaction.response.send_message("You have been unsubscribed from the daily APOD", ephemeral=True)
+    if remove_subscription(kind,target_id):
+        await interaction.response.send_message("You have been unsubscribed from the daily APOD", ephemeral=True)
+    else:
+        await interaction.response.send_message("You are not subscribed to the daily APOD", ephemeral=True)
 
 @bot.tree.command(name="subscription", description="Check the status of your Subscription")
+@app_commands.checks.cooldown(3, 5.0, key=lambda i: i.user.id)
 async def ssubscription(interaction:discord.Interaction):
     kind, target_id = get_target(interaction)
     subscription_info = get_subscriptions(kind,target_id)

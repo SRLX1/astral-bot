@@ -39,7 +39,8 @@ def innit_db():
 
 def remove_subscription(kind, target_id):
     with db_session() as conn:
-        conn.execute("DELETE FROM subscriptions WHERE kind=? AND target_id=?", (kind, target_id))
+        cursor = conn.execute("DELETE FROM subscriptions WHERE kind=? AND target_id=?", (kind, target_id))
+        return cursor.rowcount > 0
 
 def get_subscriptions(kind, target_id):
     with db_session() as conn:
