@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import sqlite3
 from pathlib import Path
 
@@ -8,10 +9,21 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+@contextmanager
+def db_session():
+    conn = get_db_connection()
+    try:
+        with conn:
+            yield conn
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        raise RuntimeError("Database operation failed") from e
+    finally:
+        conn.close()
+
 def innit_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = get_db_connection()
-    with conn:
+    with db_session() as conn:
         conn.execute("""
         CREATE TABLE IF NOT EXISTS
         subscriptions (
@@ -23,29 +35,21 @@ def innit_db():
             PRIMARY KEY (kind,target_id))
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_next_send ON subscriptions(next_send_at)")
-    conn.close()
 
-def remove_subscription(kind,target_id):
-    conn = get_db_connection()
-    with conn:
-        conn.execute("DELETE FROM subscriptions WHERE kind=? AND target_id=?", (kind,target_id))
-    conn.close()
+def remove_subscription(kind, target_id):
+    with db_session() as conn:
+        conn.execute("DELETE FROM subscriptions WHERE kind=? AND target_id=?", (kind, target_id))
 
 def get_subscriptions(kind, target_id):
-    conn = get_db_connection()
-    result = conn.execute("SELECT * FROM subscriptions WHERE kind=? AND target_id=?", (kind, target_id)).fetchone()
-    conn.close()
-    return result
+    with db_session() as conn:
+        return conn.execute("SELECT * FROM subscriptions WHERE kind=? AND target_id=?", (kind, target_id)).fetchone()
 
 def get_due_subscriptions(now_utc):
-    conn = get_db_connection()
-    results = conn.execute("SELECT * FROM subscriptions WHERE next_send_at <= ?", (now_utc,)).fetchall()
-    conn.close()
-    return results #returns list of rows
+    with db_session() as conn:
+        return conn.execute("SELECT * FROM subscriptions WHERE next_send_at <= ?", (now_utc,)).fetchall()
 
-def add_or_update_subscription(kind,target_id,send_time,timezone,next_send_at):
-    conn = get_db_connection()
-    with conn:
+def add_or_update_subscription(kind, target_id, send_time, timezone, next_send_at):
+    with db_session() as conn:
         conn.execute("""
             INSERT INTO subscriptions (kind, target_id, send_time, timezone, next_send_at)
             VALUES (?, ?, ?, ?, ?)
@@ -54,14 +58,12 @@ def add_or_update_subscription(kind,target_id,send_time,timezone,next_send_at):
                 timezone = excluded.timezone,
                 next_send_at = excluded.next_send_at
             """, (kind, target_id, send_time, timezone, next_send_at))
-    conn.close()
 
-def set_next_send_times(updates): # accepts list of tuples
-    conn = get_db_connection()
-    with conn:
+def set_next_send_times(updates):  # accepts list of tuples
+    with db_session() as conn:
         conn.executemany(
             "UPDATE subscriptions SET next_send_at = ? WHERE kind = ? AND target_id = ?",
             updates
         )
-    conn.close()
+
 
