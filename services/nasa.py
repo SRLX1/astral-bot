@@ -119,16 +119,23 @@ def APOD_API_request(date=None):
     except requests.RequestException as e:
         print(f"NASA API request failed: {e}")
         return None
-    
+
+    if not isinstance(entry, dict) or "date" not in entry:
+        print(f"Unexpected or invalid API response from NASA: {entry}")
+        return None
+
+    permalink = entry.get("permalink", "")
+    media_type = entry.get("media_type", "image")
+
     raw_video = extract_video_url(entry.get("basic_html", "")) or entry.get("url")
-    video_url = raw_video if entry.get("media_type") == "video" else None
+    video_url = raw_video if media_type == "video" else None
     if video_url:
         yt_match = re.search(r'(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', video_url, re.I)
         if yt_match:
             video_url = f"https://www.youtube.com/watch?v={yt_match.group(1)}"
 
     thumbnail_url = get_youtube_thumbnail(video_url) if video_url else None
-    explination = truncate_explanation(strip_html_convert_links(entry.get("explanation")), entry["permalink"])
+    explination = truncate_explanation(strip_html_convert_links(entry.get("explanation")), permalink)
 
     raw_hdurl = entry.get("hdurl")
     is_placeholder = bool(raw_hdurl and "news-thumbnail" in raw_hdurl)
@@ -138,16 +145,16 @@ def APOD_API_request(date=None):
     image_url = hdurl or fallback_image
 
     return {
-        "date": entry["date"],
-        "title": entry["title"],
+        "date": entry.get("date", date or nasa_date()),
+        "title": entry.get("title", "Astronomy Picture of the Day"),
         "explanation": explination,
         "credit": strip_html_convert_links(entry.get("credit")) or "Public Domain",
         "image_url": image_url,
         "url": fallback_image or entry.get("url", ""),
         "hdurl": hdurl or fallback_image or "",
-        "page_url": entry["permalink"],
+        "page_url": permalink,
         "alt": entry.get("alt", ""),
-        "media_type": entry["media_type"],
+        "media_type": media_type,
         "video": video_url,
         "thumbnail_url": thumbnail_url
     }
