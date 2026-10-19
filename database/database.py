@@ -5,7 +5,7 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "data" / "data.db"
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -24,6 +24,7 @@ def db_session():
 def innit_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with db_session() as conn:
+        conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("""
         CREATE TABLE IF NOT EXISTS
         subscriptions (
