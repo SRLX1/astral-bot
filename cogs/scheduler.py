@@ -32,16 +32,31 @@ class Scheduler(commands.Cog):
             old_next_send = row["next_send_at"]
             new_next_send = compute_next_send(row["send_time"], row["timezone"])
 
-            try:
-                destination = await get_destination(self.bot, kind, target_id)
-                await send_apod(destination, apod)
-                update_subscription_next_send(kind, target_id, old_next_send, new_next_send)
-            except (discord.Forbidden, discord.NotFound):
-                print(f"Removing dead subscription for {kind} {target_id} (Forbidden or NotFound)")
-                remove_subscription(kind, target_id)
-            except Exception as e:
-                print(f"Temporary failure delivering APOD to {kind} {target_id}: {e}")
-                update_subscription_next_send(kind, target_id, old_next_send, new_next_send)
+            sent = False
+            for attempt in range(2):
+                try:
+                    destination = await get_destination(self.bot, kind, target_id)
+                    await send_apod(destination, apod)
+                    update_subscription_next_send(kind, target_id, old_next_send, new_next_send)
+                    sent = True
+                    break
+                except (discord.Forbidden, discord.NotFound):
+                    print(f"Removing dead subscription for {kind} {target_id} (Forbidden or NotFound)")
+                    remove_subscription(kind, target_id)
+                    sent = True
+                    break
+                except Exception as e:
+                    if attempt == 0:
+                        await asyncio.sleep(2)
+                    else:
+                        print(f"Temporary failure delivering APOD to {kind} {target_id}: {e}")
+
+            if not sent:
+                # If failure has persisted for over 1 hour, advance to tomorrow to avoid infinite loop
+                if now_utc - old_next_send > 3600:
+                    print(f"Delivery for {kind} {target_id} expired (>1h past due). Advancing to tomorrow.")
+                    update_subscription_next_send(kind, target_id, old_next_send, new_next_send)
+                # Otherwise, leave next_send_at as-is so it automatically retries on the next minute tick
 
 
         
