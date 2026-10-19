@@ -1,4 +1,4 @@
-from database.database import innit_db,add_or_update_subscription,remove_subscription
+from database.database import innit_db,add_or_update_subscription,remove_subscription,get_subscriptions
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, date as dt_date
@@ -150,3 +150,23 @@ async def unsubscribe(interaction: discord.Interaction):
     kind,target_id = get_target(interaction)
     remove_subscription(kind,target_id)
     await interaction.response.send_message("You have been unsubscribed from the daily APOD", ephemeral=True)
+
+@bot.tree.command(name="subscription", description="Check the status of your Subscription")
+async def ssubscription(interaction:discord.Interaction):
+    kind, target_id = get_target(interaction)
+    subscription_info = get_subscriptions(kind,target_id)
+    if not subscription_info:
+        await interaction.response.send_message(
+            "You do not have an active APOD subscription for this DM / channel.\n"
+            "Use `/subscribe` to set one up!",
+            ephemeral=True
+        )
+        return
+    next_ts = subscription_info["next_send_at"]
+    await interaction.response.send_message(
+        "**APOD Subscription Details**\n"
+        f"• **Scheduled Time:** {subscription_info['send_time']}\n"
+        f"• **Timezone:** {subscription_info['timezone']}\n"
+        f"• **Next Send At:** <t:{next_ts}:F> (<t:{next_ts}:R>)",
+        ephemeral=True
+    )
