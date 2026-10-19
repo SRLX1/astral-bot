@@ -118,7 +118,13 @@ def APOD_API_request(date=None):
         print(f"NASA API request failed: {e}")
         return None
     
-    video_url = extract_video_url(entry.get("basic_html", "")) if entry.get("media_type") == "video" else None
+    raw_video = extract_video_url(entry.get("basic_html", "")) or entry.get("url")
+    video_url = raw_video if entry.get("media_type") == "video" else None
+    if video_url:
+        yt_match = re.search(r'(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})', video_url, re.I)
+        if yt_match:
+            video_url = f"https://www.youtube.com/watch?v={yt_match.group(1)}"
+
     thumbnail_url = get_youtube_thumbnail(video_url) if video_url else None
     explination = truncate_explanation(strip_html_convert_links(entry.get("explanation")), entry["permalink"])
 

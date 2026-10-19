@@ -27,15 +27,30 @@ def build_container_for_apod(apod):
     image_url = apod.get("image_url") or apod.get("hdurl") or apod.get("url")
     if apod["media_type"] == "image" and image_url:
         container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(image_url)))
-    elif apod["media_type"] == "video" and is_direct_video(apod["video"]):
-        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["video"])))
-    elif apod["media_type"] == "video" and apod.get("thumbnail_url"):
-        container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(apod["thumbnail_url"])))
-        container.add_item(discord.ui.ActionRow(discord.ui.Button(
-            label="Watch on YouTube",
-            url=apod["video"],
-            style=discord.ButtonStyle.link,
-        )))
+    elif apod["media_type"] == "video":
+        video_url = apod.get("video") or apod.get("url")
+        if is_direct_video(video_url):
+            container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(video_url)))
+        elif video_url:
+            thumb = (
+                apod.get("thumbnail_url")
+                or apod.get("image_url")
+                or "https://apod.nasa.gov/apod/image/nasa_insignia_300.jpg"
+            )
+            container.add_item(discord.ui.MediaGallery(discord.MediaGalleryItem(thumb)))
+
+            if "youtu" in video_url.lower():
+                label = "Watch on YouTube"
+            elif "vimeo" in video_url.lower():
+                label = "Watch on Vimeo"
+            else:
+                label = "Watch Video"
+
+            container.add_item(discord.ui.ActionRow(discord.ui.Button(
+                label=label,
+                url=video_url,
+                style=discord.ButtonStyle.link,
+            )))
     container.add_item(discord.ui.TextDisplay(apod["explanation"]))
     if apod["credit"]: container.add_item(discord.ui.TextDisplay(f"**Credit**\n{apod['credit']}"))
     container.add_item(discord.ui.TextDisplay(f"-# NASA Astrophotography Picture of the Day • {apod['date']}"))
