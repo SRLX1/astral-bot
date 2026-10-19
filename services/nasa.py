@@ -154,9 +154,11 @@ def get_aopd(date=None):
         return _cache["data"]
     data = APOD_API_request()
     if data:
-        _cache["date"] = today
-        _cache["data"] = data
-    return data or _cache["data"]
+        if data.get("date") == today:
+            _cache["date"] = today
+            _cache["data"] = data
+        return data
+    return _cache["data"]
 
 # test because it will only run if the file is run directly
 if __name__ == "__main__":
